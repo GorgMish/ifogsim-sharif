@@ -9,6 +9,7 @@ import org.apache.commons.math3.util.Pair;
 import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.fog.application.selectivity.SelectivityModel;
 import org.fog.entities.Tuple;
+import org.fog.entities.TupleData;
 import org.fog.scheduler.TupleScheduler;
 import org.fog.utils.FogUtils;
 import org.fog.utils.GeoCoverage;
@@ -57,7 +58,7 @@ public class Application {
 	 * @param ram
 	 */
 	public void addAppModule(String moduleName, int ram){
-		int mips = 1000;
+		int mips = 0;//todo there three
 		long size = 10000;
 		long bw = 1000;
 		String vmm = "Xen";
@@ -186,7 +187,7 @@ public class Application {
 					//TODO check if the edge is ACTUATOR, then create multiple tuples
 					if(edge.getEdgeType() == AppEdge.ACTUATOR){
 						//for(Integer actuatorId : module.getActuatorSubscriptions().get(edge.getTupleType())){
-							Tuple tuple = new Tuple(appId, FogUtils.generateTupleId(), edge.getDirection(),  
+							Tuple tuple = new Tuple(appId, new TupleData(), FogUtils.generateTupleId(), edge.getDirection(),
 									(long) (edge.getTupleCpuLength()),
 									inputTuple.getNumberOfPes(),
 									(long) (edge.getTupleNwLength()),
@@ -209,7 +210,7 @@ public class Application {
 							tuples.add(tuple);
 						//}
 					}else{
-						Tuple tuple = new Tuple(appId, FogUtils.generateTupleId(), edge.getDirection(),  
+						Tuple tuple = new Tuple(appId, new TupleData(), FogUtils.generateTupleId(), edge.getDirection(),
 								(long) (edge.getTupleCpuLength()),
 								inputTuple.getNumberOfPes(),
 								(long) (edge.getTupleNwLength()),
@@ -245,7 +246,7 @@ public class Application {
 		AppModule module = getModuleByName(edge.getSource());
 		if(edge.getEdgeType() == AppEdge.ACTUATOR){
 			for(Integer actuatorId : module.getActuatorSubscriptions().get(edge.getTupleType())){
-				Tuple tuple = new Tuple(appId, FogUtils.generateTupleId(), edge.getDirection(),  
+				Tuple tuple = new Tuple(appId, new TupleData(), FogUtils.generateTupleId(), edge.getDirection(),
 						(long) (edge.getTupleCpuLength()),
 						1,
 						(long) (edge.getTupleNwLength()),
@@ -267,7 +268,7 @@ public class Application {
 				return tuple;
 			}
 		}else{
-			Tuple tuple = new Tuple(appId, FogUtils.generateTupleId(), edge.getDirection(),  
+			Tuple tuple = new Tuple(appId, new TupleData(), FogUtils.generateTupleId(), edge.getDirection(),
 					(long) (edge.getTupleCpuLength()),
 					1,
 					(long) (edge.getTupleNwLength()),

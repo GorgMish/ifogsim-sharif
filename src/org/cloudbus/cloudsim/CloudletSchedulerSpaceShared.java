@@ -103,7 +103,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 		List<ResCloudlet> toRemove = new ArrayList<ResCloudlet>();
 		for (ResCloudlet rcl : getCloudletExecList()) {
 			// finished anyway, rounding issue...
-			if (rcl.getRemainingCloudletLength() == 0) {
+			if (rcl.getRemainingCloudletLength() == 0) { // todo check finished cloudlet
 				toRemove.add(rcl);
 				cloudletFinish(rcl);
 				finished++;
@@ -112,7 +112,7 @@ public class CloudletSchedulerSpaceShared extends CloudletScheduler {
 		getCloudletExecList().removeAll(toRemove);
 
 		// for each finished cloudlet, add a new one from the waiting list
-		if (!getCloudletWaitingList().isEmpty()) {
+		if (!getCloudletWaitingList().isEmpty()) { //todo as much as cloudlet have been executed add new one to the exec list
 			for (int i = 0; i < finished; i++) {
 				toRemove.clear();
 				for (ResCloudlet rcl : getCloudletWaitingList()) {

@@ -11,4 +11,9 @@ public class NetworkUsageMonitor {
 	public static double getNetworkUsage(){
 		return networkUsage;
 	}
+
+	public static void resetNU(){
+		networkUsage = 0.0;
+	}
+
 }

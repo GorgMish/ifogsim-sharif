@@ -8,9 +8,17 @@
 
 package org.cloudbus.cloudsim.core;
 
+import org.apache.commons.math3.util.Pair;
 import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.NetworkTopology;
 import org.cloudbus.cloudsim.core.predicates.Predicate;
+import org.fog.entities.FogDevice;
+import org.fog.entities.Paras;
+import org.fog.entities.Tuple;
+import org.fog.test.perfeval.Example1;
+
+import java.io.*;
+
 
 /**
  * This class represents a simulation entity. An entity handles events and can send events to other
@@ -42,6 +50,28 @@ public abstract class SimEntity implements Cloneable {
 	/** The entity's current state. */
 	private int state;
 
+	protected Pair<Double, Double> locationXY;
+	protected String type;
+	public double getxCoordinate() {
+		return locationXY.getFirst();}
+	public void setxCoordinate(double xCoordinate) {
+		this.locationXY = new Pair<>(xCoordinate, locationXY.getSecond());
+	}
+	public void setyCoordinate(double yCoordinate) {
+		this.locationXY = new Pair<>(locationXY.getFirst(), yCoordinate);
+	}
+	public double getyCoordinate() {
+		return locationXY.getSecond();}
+	public void setLocationXY(Pair<Double, Double> newXY){
+		this.locationXY = new Pair<>(newXY);}
+	public Pair<Double, Double> getLocationXY(){
+		return locationXY;
+	}
+	public double calcDistance(Pair<Double, Double> compXY){
+		double distance = Math.sqrt(
+				Math.pow(this.locationXY.getFirst()-compXY.getFirst(), 2) + Math.pow(this.locationXY.getSecond()-compXY.getSecond(), 2));
+		return distance;
+	}
 	/**
 	 * Creates a new entity.
 	 * 
@@ -56,6 +86,9 @@ public abstract class SimEntity implements Cloneable {
 		state = RUNNABLE;
 		CloudSim.addEntity(this);
 	}
+
+	public File relatedFile;
+	public BufferedWriter bufferWriter;
 
 	/**
 	 * Get the name of this entity.
@@ -401,8 +434,13 @@ public abstract class SimEntity implements Cloneable {
 
 	public void run() {
 		SimEvent ev = evbuf != null ? evbuf : getNextEvent();
-
 		while (ev != null) {
+			if (Example1.countER == 297889 ){
+				int j = 0;
+				j++;
+			}
+//			System.out.println(Example1.countER + "  this"); // todo print
+			Example1.inc();
 			processEvent(ev);
 			if (state != RUNNABLE) {
 				break;
@@ -541,10 +579,13 @@ public abstract class SimEntity implements Cloneable {
 			delay += getNetworkDelay(srcId, entityId);
 		}
 
+//		if (Paras.calcLatency && data instanceof Tuple && this.type != "sensor")
+//            delay += calcLatencyByDistance(srcId, entityId);
 		schedule(entityId, delay, cloudSimTag, data);
 	}
 
-	/**
+
+    /**
 	 * Sends an event/message to another entity by <tt>delaying</tt> the simulation time from the
 	 * current time, with a tag representing the event type.
 	 * 
@@ -679,4 +720,36 @@ public abstract class SimEntity implements Cloneable {
 		return 0.0;
 	}
 
+	public int updateIoTStatus() {
+		Pair<Double, Double> fogLoc, mainFogLoc;
+		if (Math.abs(this.getLocationXY().getFirst() - 7.5) > 7.5 || Math.abs(this.getLocationXY().getSecond() - 7.5) > 7.5){
+			if(Paras.IoTlocDebug) {
+				try {
+					BufferedWriter bf = new BufferedWriter(new FileWriter(CloudSim.getEntity(this.id).relatedFile, true));
+					bf.write(this.getLocationXY().getFirst()+" "+this.getLocationXY().getSecond()+"\n");
+					bf.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+//                System.out.println("time: "+ CloudSim.clock()+" - redzone: " + CloudSim.getEntityName(this.id)+" loc: "+ this.getLocationXY()+ " battery: "+this.getBatteryLife());
+			if (Math.abs(this.getLocationXY().getFirst() - 7.5) > 12.5 || Math.abs(this.getLocationXY().getSecond() - 7.5) > 12.5)
+				return -1;
+			else
+				return 0;
+		} else{
+			if(Paras.IoTlocDebug) {
+				try {
+					BufferedWriter bf = new BufferedWriter(new FileWriter(CloudSim.getEntity(this.id).relatedFile, true));
+					bf.write(this.getLocationXY().getFirst()+" "+this.getLocationXY().getSecond()+"\n");
+					bf.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+//                System.out.println("time: "+ CloudSim.clock()+" - safe: " + CloudSim.getEntityName(this.id)+" loc: "+ this.getLocationXY()+ " battery: "+this.getBatteryLife());
+			return 0;
+		}
+
+	}
 }

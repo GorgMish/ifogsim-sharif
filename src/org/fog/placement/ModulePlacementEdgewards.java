@@ -62,7 +62,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 			for(String moduleName : getModuleMapping().getModuleMapping().get(deviceName)){
 				int deviceId = CloudSim.getEntityId(deviceName);
 				getCurrentModuleMap().get(deviceId).add(moduleName);
-				getCurrentModuleLoadMap().get(deviceId).put(moduleName, 0.0);
+				getCurrentModuleLoadMap().get(deviceId).put(moduleName, 0.0);//todo
 				getCurrentModuleInstanceNum().get(deviceId).put(moduleName, 0);
 			}
 		}
@@ -129,7 +129,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 		
 		/**
 		 * Periodic edges have a fixed periodicity of tuples, so setting the tuple rate beforehand
-		 */
+		 * */
 		for(AppEdge edge : getApplication().getEdges()){
 			if(edge.isPeriodic()){
 				appEdgeToRate.put(edge, 1/edge.getPeriodicity());
@@ -169,7 +169,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 						if(pair.getFirst().equals(edge.getTupleType())){
 							double outputRate = appEdgeToRate.get(edge)*map.get(pair).getMeanRate(); // getting mean rate from SelectivityModel
 							AppEdge outputEdge = getApplication().getEdgeMap().get(pair.getSecond());
-							if(!appEdgeToRate.containsKey(outputEdge) || appEdgeToRate.get(outputEdge)!=outputRate){
+							if(!appEdgeToRate.containsKey(outputEdge) || appEdgeToRate.get(outputEdge)!=outputRate){ //todo
 								// if some new information is available
 								changed = true;
 							}
@@ -192,7 +192,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 				int upsteamDeviceId = isPlacedUpstream(moduleName, path);
 				if(upsteamDeviceId > 0){
 					if(upsteamDeviceId==deviceId){
-						placedModules.add(moduleName);
+						placedModules.add(moduleName); //todo
 						modulesToPlace = getModulesToPlace(placedModules);
 						
 						// NOW THE MODULE TO PLACE IS IN THE CURRENT DEVICE. CHECK IF THE NODE CAN SUSTAIN THE MODULE
@@ -252,7 +252,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 				}
 			
 			
-				modulesToPlace.remove(moduleName);
+				modulesToPlace.remove(moduleName); // :|
 			}
 			
 		}
@@ -459,7 +459,7 @@ public class ModulePlacementEdgewards extends ModulePlacement{
 	protected List<List<Integer>> getLeafToRootPaths(){
 		FogDevice cloud=null;
 		for(FogDevice device : getFogDevices()){
-			if(device.getName().equals("cloud"))
+			if(device.getName().equals("Cloud"))
 				cloud = device;
 		}
 		return getPaths(cloud.getId());

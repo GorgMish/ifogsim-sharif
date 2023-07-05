@@ -28,6 +28,9 @@ public class TimeKeeper {
 			instance = new TimeKeeper();
 		return instance;
 	}
+	public static void resetTK(){
+		instance = null;
+	}
 	
 	public int getUniqueId(){
 		return count++;

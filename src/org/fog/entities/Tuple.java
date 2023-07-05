@@ -3,6 +3,7 @@ package org.fog.entities;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.math3.util.Pair;
 import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.UtilizationModel;
 
@@ -22,6 +23,26 @@ public class Tuple extends Cloudlet{
 	private int actuatorId;
 	private int sourceDeviceId;
 	private int sourceModuleId;
+	private TupleData data;
+
+	public int getDeviceToProcess() {
+		return deviceToProcess;
+	}
+
+	public void setDeviceToProcess(int deviceToProcess) {
+		this.deviceToProcess = deviceToProcess;
+	}
+
+	private int deviceToProcess;
+
+	public TupleData getData() {
+		return data;
+	}
+
+	public void setData(TupleData data) {
+		this.data = data;
+	}
+
 	/**
 	 * Map to keep track of which module instances has a tuple traversed.
 	 * 
@@ -29,7 +50,7 @@ public class Tuple extends Cloudlet{
 	 */
 	private Map<String, Integer> moduleCopyMap;
 	
-	public Tuple(String appId, int cloudletId, int direction, long cloudletLength, int pesNumber,
+	public Tuple(String appId, TupleData data, int cloudletId, int direction, long cloudletLength, int pesNumber,
 			long cloudletFileSize, long cloudletOutputSize,
 			UtilizationModel utilizationModelCpu,
 			UtilizationModel utilizationModelRam,
@@ -38,9 +59,12 @@ public class Tuple extends Cloudlet{
 				cloudletOutputSize, utilizationModelCpu, utilizationModelRam,
 				utilizationModelBw);
 		setAppId(appId);
+		setData(data);
 		setDirection(direction);
 		setSourceDeviceId(-1);
 		setModuleCopyMap(new HashMap<String, Integer>());
+
+		setDeviceToProcess(0);
 	}
 
 	public int getActualTupleId() {

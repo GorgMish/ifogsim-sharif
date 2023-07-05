@@ -44,6 +44,8 @@ public class Sensor extends SimEntity{
 		setTupleType(tupleType);
 		setSensorName(sensorName);
 		setLatency(latency);
+
+		this.type = "sensor";
 	}
 	
 	public Sensor(String name, int userId, String appId, int gatewayDeviceId, double latency, GeoLocation geoLocation, 
@@ -58,6 +60,8 @@ public class Sensor extends SimEntity{
 		setTupleType(tupleType);
 		setSensorName(sensorName);
 		setLatency(latency);
+
+		this.type = "sensor";
 	}
 	
 	/**
@@ -76,6 +80,8 @@ public class Sensor extends SimEntity{
 		setTupleType(tupleType);
 		setSensorName(tupleType);
 		setUserId(userId);
+
+		this.type = "sensor";
 	}
 	
 	public void transmit(){
@@ -87,16 +93,16 @@ public class Sensor extends SimEntity{
 		long cpuLength = (long) _edge.getTupleCpuLength();
 		long nwLength = (long) _edge.getTupleNwLength();
 		
-		Tuple tuple = new Tuple(getAppId(), FogUtils.generateTupleId(), Tuple.UP, cpuLength, 1, nwLength, outputSize, 
+		Tuple tuple = new Tuple(getAppId(), new TupleData(), FogUtils.generateTupleId(), Tuple.UP, cpuLength, 1, nwLength, outputSize,
 				new UtilizationModelFull(), new UtilizationModelFull(), new UtilizationModelFull());
 		tuple.setUserId(getUserId());
 		tuple.setTupleType(getTupleType());
-		
+		tuple.getData().setDeadline(Paras.deadline);
 		tuple.setDestModuleName(_edge.getDestination());
 		tuple.setSrcModuleName(getSensorName());
 		Logger.debug(getName(), "Sending tuple with tupleId = "+tuple.getCloudletId());
 
-		int actualTupleId = updateTimings(getSensorName(), tuple.getDestModuleName());
+		int actualTupleId = updateTimings(getSensorName(), tuple.getDestModuleName()); //todo
 		tuple.setActualTupleId(actualTupleId);
 		
 		send(gatewayDeviceId, getLatency(), FogEvents.TUPLE_ARRIVAL,tuple);

@@ -24,7 +24,8 @@ public class FractionalSelectivity implements SelectivityModel{
 	
 	@Override
 	public boolean canSelect() {
-		if(Math.random() < getSelectivity()) // if the probability condition is satisfied
+		double i = Math.random();
+		if(i < getSelectivity()) // if the probability condition is satisfied
 			return true;
 		return false;
 	}

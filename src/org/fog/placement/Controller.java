@@ -1,40 +1,61 @@
 package org.fog.placement;
 
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.text.DecimalFormat;
+import java.util.*;
 
+import org.apache.commons.math3.util.Pair;
+import org.cloudbus.cloudsim.Host;
+import org.cloudbus.cloudsim.Pe;
+import org.cloudbus.cloudsim.Storage;
+import org.fog.entities.analysisStruct;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.SimEntity;
 import org.cloudbus.cloudsim.core.SimEvent;
+import org.cloudbus.cloudsim.power.PowerHost;
+import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
+import org.cloudbus.cloudsim.sdn.overbooking.BwProvisionerOverbooking;
+import org.cloudbus.cloudsim.sdn.overbooking.PeProvisionerOverbooking;
 import org.fog.application.AppEdge;
 import org.fog.application.AppLoop;
 import org.fog.application.AppModule;
 import org.fog.application.Application;
-import org.fog.entities.Actuator;
-import org.fog.entities.FogDevice;
-import org.fog.entities.Sensor;
-import org.fog.utils.Config;
-import org.fog.utils.FogEvents;
-import org.fog.utils.FogUtils;
-import org.fog.utils.NetworkUsageMonitor;
-import org.fog.utils.TimeKeeper;
+import org.fog.entities.*;
+import org.fog.policy.AppModuleAllocationPolicy;
+import org.fog.scheduler.StreamOperatorScheduler;
+import org.fog.test.perfeval.Example1;
+import org.fog.utils.*;
+import org.fog.utils.distribution.DeterministicDistribution;
 
-public class Controller extends SimEntity{
+public class Controller extends SimEntity {
 	
 	public static boolean ONLY_CLOUD = false;
 		
 	private List<FogDevice> fogDevices;
 	private List<Sensor> sensors;
 	private List<Actuator> actuators;
+	private List<FogDevice> fogLayer1;
+
+	public List<FogDevice> getIoTMobs() {
+		return IoTMobs;
+	}
+
+	public void setIoTMobs(List<FogDevice> ioTMobs) {
+		IoTMobs = ioTMobs;
+	}
+
+	private List<FogDevice> IoTMobs;
+
+
+	private HashMap<Double, Double> analysis;
 	
 	private Map<String, Application> applications;
 	private Map<String, Integer> appLaunchDelays;
 
 	private Map<String, ModulePlacement> appModulePlacementPolicy;
-	
-	public Controller(String name, List<FogDevice> fogDevices, List<Sensor> sensors, List<Actuator> actuators) {
+	private boolean runFinished;
+
+	public Controller(String name, List<FogDevice> fogDevices, List<Sensor> sensors, List<Actuator> actuators, List<FogDevice> fogLayer1, List<FogDevice> IoTMobs) {
 		super(name);
 		this.applications = new HashMap<String, Application>();
 		setAppLaunchDelays(new HashMap<String, Integer>());
@@ -46,6 +67,112 @@ public class Controller extends SimEntity{
 		setActuators(actuators);
 		setSensors(sensors);
 		connectWithLatencies();
+		setFogLayer1(fogLayer1);
+		setIoTMobs(IoTMobs);
+
+		CloudSim.runFinished = false;
+		//TODO
+//		gatewaySelection();
+//		formClusters();
+	}
+	public void setFogLayer1(List<FogDevice> fogLayer1) {
+		this.fogLayer1 = fogLayer1;
+	}
+
+	public List<FogDevice> getFogLayer1() {
+		return fogLayer1;
+	}
+
+	private void gatewaySelection() {
+// TODO Auto-generated method stub
+		for(int i=0;i<getFogDevices().size();i++){
+			FogDevice fogDevice = getFogDevices().get(i);
+			int parentID=-1;
+			if(fogDevice.getParentId()==-1) {
+				double minDistance = Config.MAX_NUMBER;
+				for(int j=0;j<getFogDevices().size();j++){
+					FogDevice anUpperDevice = getFogDevices().get(j);
+					if(fogDevice.getLevel()+1==anUpperDevice.getLevel()){
+						double distance = calculateDistance(fogDevice,anUpperDevice);
+						if(distance<minDistance){
+							minDistance = distance;
+							parentID = anUpperDevice.getId();}
+					}
+				}
+			}
+			fogDevice.setParentId(parentID);
+		}
+	}
+
+	private void gatewayLayer1() {
+// TODO Auto-generated method stub
+		for(int i=0;i<getFogDevices().size();i++){
+			FogDevice fogDevice = getFogDevices().get(i);
+			int parentID=-1;
+			if(fogDevice.getParentId()==-1) {
+				double minDistance = Config.MAX_NUMBER;
+				for(int j=0;j<getFogDevices().size();j++){
+					FogDevice anUpperDevice = getFogDevices().get(j);
+					if(fogDevice.getLevel()+1==anUpperDevice.getLevel()){
+						double distance = calculateDistance(fogDevice,anUpperDevice);
+						if(distance<minDistance){
+							minDistance = distance;
+							parentID = anUpperDevice.getId();}
+					}
+				}
+			}
+			fogDevice.setParentId(parentID);
+		}
+	}
+
+	static Map<Integer, Integer> clusterInfo = new HashMap<Integer,Integer>();
+	static Map<Integer, List<Integer>> clusters = new HashMap<Integer, List<Integer>>();
+	private void formClusters() {
+		for(FogDevice fd: getFogDevices()){
+			clusterInfo.put(fd.getId(), -1);
+		}
+		int clusterId = 0;
+		for(int i=0;i<getFogDevices().size();i++){
+			FogDevice fd1 = getFogDevices().get(i);
+			for(int j=0;j<getFogDevices().size();j++) {
+				FogDevice fd2 = getFogDevices().get(j);
+				if(fd1.getId()!=fd2.getId() && fd1.getParentId()==fd2.getParentId() && calculateDistance(fd1, fd2)<Config.CLUSTER_DISTANCE && fd1.getLevel()==fd2.getLevel())
+				{
+					int fd1ClusteriD = clusterInfo.get(fd1.getId());
+					int fd2ClusteriD = clusterInfo.get(fd2.getId());
+					if(fd1ClusteriD==-1 && fd2ClusteriD==-1){
+						clusterId++;
+						clusterInfo.put(fd1.getId(), clusterId);
+						clusterInfo.put(fd2.getId(), clusterId);
+					}
+					else if(fd1ClusteriD==-1)
+						clusterInfo.put(fd1.getId(), clusterInfo.get(fd2.getId()));
+					else if(fd2ClusteriD==-1)
+						clusterInfo.put(fd2.getId(), clusterInfo.get(fd1.getId()));
+				}
+			}
+		}
+		for(int id:clusterInfo.keySet()){
+			if(!clusters.containsKey(clusterInfo.get(id))){
+				List<Integer>clusterMembers = new ArrayList<Integer>();
+				clusterMembers.add(id);
+				clusters.put(clusterInfo.get(id), clusterMembers);
+			}
+			else
+			{
+				List<Integer>clusterMembers = clusters.get(clusterInfo.get(id));
+				clusterMembers.add(id);
+				clusters.put(clusterInfo.get(id), clusterMembers);
+			}
+		}
+		for(int id:clusters.keySet())
+			System.out.println(id+" "+clusters.get(id));
+	}
+
+	private double calculateDistance(FogDevice fogDevice, FogDevice anUpperDevice) {
+// TODO Auto-generated method stub
+		return Math.sqrt(Math.pow(fogDevice.getxCoordinate() - anUpperDevice.getxCoordinate(), 2.00) +
+				Math.pow(fogDevice.getyCoordinate() - anUpperDevice.getyCoordinate(), 2.00));
 	}
 
 	private FogDevice getFogDeviceById(int id){
@@ -69,6 +196,12 @@ public class Controller extends SimEntity{
 	
 	@Override
 	public void startEntity() {
+		if (Paras.mobility) {
+			scheduleMobility();
+			scheduleAddNewMobFog();
+			scheduleAddNewMobIoT();
+		}
+
 		for(String appId : applications.keySet()){
 			if(getAppLaunchDelays().get(appId)==0)
 				processAppSubmit(applications.get(appId));
@@ -76,13 +209,23 @@ public class Controller extends SimEntity{
 				send(getId(), getAppLaunchDelays().get(appId), FogEvents.APP_SUBMIT, applications.get(appId));
 		}
 
-		send(getId(), Config.RESOURCE_MANAGE_INTERVAL, FogEvents.CONTROLLER_RESOURCE_MANAGE);
+		send(getId(), Config.RESOURCE_MANAGE_INTERVAL, FogEvents.CONTROLLER_RESOURCE_MANAGE);//todo
 		
 		send(getId(), Config.MAX_SIMULATION_TIME, FogEvents.STOP_SIMULATION);
 		
 		for(FogDevice dev : getFogDevices())
-			sendNow(dev.getId(), FogEvents.RESOURCE_MGMT);
+			sendNow(dev.getId(), FogEvents.RESOURCE_MGMT);//todo
 
+	}
+
+	private void scheduleAddNewMobFog() {
+		double timeToAdd= Paras.newFogInterInterval;
+		send(getId(), timeToAdd, FogEvents.ADD_NEW_MOBILE_FOG, null);
+	}
+
+	private void scheduleAddNewMobIoT() {
+		double timeToAdd= Paras.newIoTInterInterval;
+		send(getId(), timeToAdd, FogEvents.ADD_NEW_MOBILE_IOT, null);
 	}
 
 	@Override
@@ -97,25 +240,245 @@ public class Controller extends SimEntity{
 		case FogEvents.CONTROLLER_RESOURCE_MANAGE:
 			manageResources();
 			break;
-		case FogEvents.STOP_SIMULATION:
+		case FogEvents.CHANGE_MOBFOGS_LOCATION:
+			manageFogMobility();
+			break;
+		case FogEvents.CHANGE_MOBIOTS_LOCATION:
+			manageIoTMobility();
+			break;
+		case FogEvents.ADD_NEW_MOBILE_FOG:
+			addNewMobileFog();
+			break;
+		case FogEvents.ADD_NEW_MOBILE_IOT:
+			addNewMobileIoT();
+			break;
+		case FogEvents.STOP_SIMULATION: //todo result
 			CloudSim.stopSimulation();
+//			printShowConfig();
 			printTimeDetails();
 			printPowerDetails();
 			printCostDetails();
+
 			printNetworkUsageDetails();
-			System.exit(0);
+			printAnalysis();
+			CloudSim.runFinished = true;
+//			analysisFile();
+//			System.exit(0);
 			break;
-			
 		}
 	}
-	
+
+	private void printShowConfig() {
+
+
+		System.out.println("\n **** config of this result ***** \n");
+		System.out.println(" ## 1 topology details ##");
+		System.out.println("# of rooms : "+ Paras.numOfRooms);
+		System.out.println("# of light sensors: "+ Paras.numOfLightSensorPerRoom);
+		System.out.println("# of heavy sensors: "+ Paras.numOfHeavySensorPerRoom);
+
+		System.out.println(" ## 2 MIPS of devices ##");
+		System.out.println("Cloud : "+ Paras.cloudMIPS);
+		System.out.println("Layer2: "+ Paras.fog2MIPS);
+		System.out.println("Layer2: "+ Paras.fog1MIPS);
+
+		System.out.println(" ## 3 MI of tasks ##");
+		System.out.println("light : "+ Paras.lightReqMI);
+		System.out.println("heavy : "+ Paras.heavyReqMI);
+
+		System.out.println(" ### 4 other details ###");
+		System.out.println("deadline : "+ Paras.deadline);
+		System.out.println("battery threshold : "+ Paras.batteryThreshold);
+		System.out.println("RSSI threshold : "+ Paras.RSSIthreshold);
+
+		System.out.println(" #################");
+	}
+
+	private void printAnalysis() {
+		System.out.println("\n*** OFFLOADING DETAILS *** ");
+		System.out.println("# OF LIGHTS OFFLOADED");
+		analysisStruct.numberOfLightOffloading.forEach((k,v)->System.out.println(k + " : "+v));
+		System.out.println("# OF HEAVIES OFFLOADED");
+		analysisStruct.numberOfHeavyOffloading.forEach((k,v)->System.out.println(k + " : "+v));
+
+		System.out.println("\n ========= END =========== \n \n \n \n");
+	}
+
+	private void addNewMobileFog() {
+		FogDevice mainFog, mobileFog = createMobDevice("MobileFog-"+Example1.numMob, Paras.fog1MIPS, 4000, Paras.bwBetFogMB * Paras.MB, Paras.bwBetFogMB * Paras.MB, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
+		mainFog = (FogDevice)CloudSim.getEntity("MainFog");
+		fogDevices.add(mobileFog);
+		mobileFog.setMobile();
+//        mobileFog.setParentId(mainFog.getId());
+		mobileFog.setUplinkLatency(0);
+		mobileFog.setPeerHeadId(mainFog.getId());
+		mainFog.getListOfPeers().add(mobileFog.getId());
+		mobileFog.setLocationXY(new Pair<Double, Double>(12.0, 7.5));
+		mobileFog.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"__mob"+Example1.numMob+".txt");
+
+		try {
+			mobileFog.relatedFile.createNewFile();
+			mobileFog.bufferWriter = new BufferedWriter(new FileWriter(mobileFog.relatedFile, true));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Example1.incMobs();
+
+
+//		fogLayer1s.add(mobileFog);
+//		if(Paras.debug)
+			System.out.println("time: "+CloudSim.clock()+" - Fog-device added: " + mobileFog.getName());
+
+		TableEntry entry = new TableEntry(mobileFog.getId(), mobileFog.getLocationXY(), Paras.fog1MIPS, true, Paras.bwBetFogMB * Paras.MB,0.0, 0.0, 0.0, 0.0, Paras.initialPowHour*Paras.HtoS, 0.0, 0, 0, 0);
+		mainFog.offloadTable.put(mobileFog.getName(), entry);
+		mainFog.getInterfaces().put(mobileFog.getId(), new Interface(Paras.bwBetFogMB * Paras.MB));
+
+		scheduleAddNewMobFog();
+
+		sendNow(mobileFog.getId(), FogEvents.RESOURCE_MGMT);
+        sendNow(mobileFog.getId(), FogEvents.ACTIVE_APP_UPDATE, applications.values().iterator().next());
+        sendNow(mobileFog.getId(), FogEvents.APP_SUBMIT, applications.values().iterator().next());
+        sendNow(mobileFog.getId(), FogEvents.LAUNCH_MODULE, applications.values().iterator().next().getModuleByName("lightProcess"));
+        sendNow(mobileFog.getId(), FogEvents.LAUNCH_MODULE, applications.values().iterator().next().getModuleByName("heavyProcess"));
+	}
+
+
+	private void addNewMobileIoT() {
+		int room = Paras.randomGenerator.nextInt(Paras.numOfRooms);
+		String mobileId = "LightSensor-" + room + "-" + Paras.IoTinRooms.get(room);
+		Paras.IoTinRooms.set(room,Paras.IoTinRooms.get(room)+1);
+
+		FogDevice Sensor = addSensor(mobileId,"lightRAW", 2, "Example1", ((FogDevice)CloudSim.getEntity("MainFog")).getId(), Paras.lightMIPS, 1000, Paras.bwFromLightKB * Paras.KB, Paras.bwFromLightKB * Paras.KB); // adding a smart camera to the physical topology. Smart cameras have been modeled as fog devices as well.
+		Sensor.setUplinkLatency(0); // latency of connection between camera and router is 2 ms
+		Sensor.setLocationXY(Paras.roomLocs.get(room));
+		fogDevices.add(Sensor);
+		IoTMobs.add(Sensor);
+
+		((FogDevice)CloudSim.getEntity("MainFog")).getChildrenIds().add(Sensor.getId());
+
+		if(Paras.IoTlocDebug) {
+			Sensor.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"__mob_IOT_"+ room + "-" + Paras.IoTinRooms.get(room)+".txt");
+
+			try {
+				Sensor.relatedFile.createNewFile();
+				Sensor.bufferWriter = new BufferedWriter(new FileWriter(Sensor.relatedFile, true));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		System.out.println("time: "+CloudSim.clock()+" - IoT-device added: " + Sensor.getName());
+
+
+		scheduleAddNewMobIoT();
+
+		sendNow(Sensor.getId(), FogEvents.RESOURCE_MGMT);
+		sendNow(Sensor.getId(), FogEvents.ACTIVE_APP_UPDATE, applications.values().iterator().next());
+		sendNow(Sensor.getId(), FogEvents.APP_SUBMIT, applications.values().iterator().next());
+//		sendNow(mobileFog.getId(), FogEvents.LAUNCH_MODULE, applications.values().iterator().next().getModuleByName("lightProcess"));
+//		sendNow(mobileFog.getId(), FogEvents.LAUNCH_MODULE, applications.values().iterator().next().getModuleByName("heavyProcess"));
+	}
+
+	private FogDevice addSensor(String id, String tupleType, int userId, String appId, int parentId, long mips, int ram, long dwBw, long upBw) {
+		FogDevice Embedded = createMobDevice("embSen-" + id, mips, ram, dwBw, upBw, 3, 0, 5, 4);
+		Embedded.setParentId(parentId);
+		Sensor sensor = new Sensor("sen-" + id, tupleType, userId, appId, new DeterministicDistribution(Paras.emitInterval)); // inter-transmission time of camera (sensor) follows a deterministic distribution
+//		sensors.add(sensor);
+		sensor.setApp(applications.values().iterator().next());
+		sensor.setGatewayDeviceId(Embedded.getId());
+		sensor.setLatency(0.0);  // latency of connection between camera (sensor) and the parent Smart Camera is 1 ms
+		return Embedded;
+	}
+
+	private static FogDevice createMobDevice(String nodeName, long mips,
+											 int ram, long upBw, long downBw, int level, double ratePerMips, double busyPower, double idlePower) {
+
+		List<Pe> peList = new ArrayList<Pe>();
+
+		// 3. Create PEs and add these into a list.
+		peList.add(new Pe(0, new PeProvisionerOverbooking(mips))); // need to store Pe id and MIPS Rating
+
+		int hostId = FogUtils.generateEntityId();
+		long storage = 1000000; // host storage
+		int bw = 10000;
+
+		PowerHost host = new PowerHost(
+				hostId,
+				new RamProvisionerSimple(ram),
+				new BwProvisionerOverbooking(bw),//todo
+				storage,
+				peList,
+				new StreamOperatorScheduler(peList),
+				new FogLinearPowerModel(busyPower, idlePower)
+		);
+
+		List<Host> hostList = new ArrayList<Host>();
+		hostList.add(host);
+
+		String arch = "x86"; // system architecture
+		String os = "Linux"; // operating system
+		String vmm = "Xen";
+		double time_zone = 10.0; // time zone this resource located
+		double cost = 3.0; // the cost of using processing in this resource//todo
+		double costPerMem = 0.05; // the cost of using memory in this resource
+		double costPerStorage = 0.001; // the cost of using storage in this
+		// resource
+		double costPerBw = 0.0; // the cost of using bw in this resource
+		LinkedList<Storage> storageList = new LinkedList<Storage>(); // we are not adding SAN
+		// devices by now
+
+		FogDeviceCharacteristics characteristics = new FogDeviceCharacteristics(
+				arch, os, vmm, host, time_zone, cost, costPerMem,
+				costPerStorage, costPerBw);
+
+		FogDevice fogdevice = null;
+		try {
+			fogdevice = new FogDevice(nodeName, characteristics,
+					new AppModuleAllocationPolicy(hostList), storageList, 0.1, upBw, downBw, 0, ratePerMips);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		fogdevice.setLevel(level);
+		return fogdevice;
+	}
+
+	private void analysisFile() {
+		//todo:analysis
+		File out;
+		BufferedWriter outTofile = null;
+		out = new File("analysis.txt");
+		DecimalFormat df = new DecimalFormat("0.00");
+		try {
+			outTofile = new BufferedWriter(new FileWriter(out));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		int iii = 0;
+		for(analysisStruct i:CloudSim.listOfAnalysis){
+//			outTofile.write(iii++ + ".  "  + i.getType() + " time:" + i.getTime() + " place:" + i.getRouterName() + " file:" + i.getFile() + " packet:" + i.getPacket() + "\r\n");
+			try {
+				if (i.tag == 55||i.tag == 68||i.tag == 20)
+					continue;
+				outTofile.write( "tag :"+ i.tag + "  time :"+ df.format(i.time)+"  rTime :"+ df.format(i.runTime)+"  src :"+ i.src+"  dst :"+ i.dst+"  delay :"+ df.format(i.delay) + " tuple :" + i.tupleType +"\r\n");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		try {
+			outTofile.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	private void printNetworkUsageDetails() {
-		System.out.println("Total network usage = "+NetworkUsageMonitor.getNetworkUsage()/Config.MAX_SIMULATION_TIME);		
+		System.out.println("Total network usage = "+NetworkUsageMonitor.getNetworkUsage()/Config.MAX_SIMULATION_TIME);
 	}
 
 	private FogDevice getCloud(){
 		for(FogDevice dev : getFogDevices())
-			if(dev.getName().equals("cloud"))
+			if(dev.getName().equals("Cloud") || dev.getName().equals("cloud"))
 				return dev;
 		return null;
 	}
@@ -126,6 +489,8 @@ public class Controller extends SimEntity{
 	
 	private void printPowerDetails() {
 		for(FogDevice fogDevice : getFogDevices()){
+			if (fogDevice.getName().contains("emb"))
+				continue;
 			System.out.println(fogDevice.getName() + " : Energy Consumed = "+fogDevice.getEnergyConsumption());
 		}
 	}
@@ -143,6 +508,8 @@ public class Controller extends SimEntity{
 	private void printTimeDetails() {
 		System.out.println("=========================================");
 		System.out.println("============== RESULTS ==================");
+		System.out.println("==============  " + Paras.resTypeStr + "   ==================");
+
 		System.out.println("=========================================");
 		System.out.println("EXECUTION TIME : "+ (Calendar.getInstance().getTimeInMillis() - TimeKeeper.getInstance().getSimulationStartTime()));
 		System.out.println("=========================================");
@@ -190,7 +557,7 @@ public class Controller extends SimEntity{
 		getAppModulePlacementPolicy().put(application.getAppId(), modulePlacement);
 		
 		for(Sensor sensor : sensors){
-			sensor.setApp(getApplications().get(sensor.getAppId()));
+			sensor.setApp(getApplications().get(sensor.getAppId())); //todo javab: bug : baghti ye sensor jadid ezafe mikonim ba hich eventi nemishe in ghetee kodo (set kardan app) run kard ke yanni bug :|
 		}
 		for(Actuator ac : actuators){
 			ac.setApp(getApplications().get(ac.getAppId()));
@@ -200,13 +567,79 @@ public class Controller extends SimEntity{
 			if(edge.getEdgeType() == AppEdge.ACTUATOR){
 				String moduleName = edge.getSource();
 				for(Actuator actuator : getActuators()){
-					if(actuator.getActuatorType().equalsIgnoreCase(edge.getDestination()))
+					if(actuator.getActuatorType().equalsIgnoreCase(edge.getDestination())) //todo:
 						application.getModuleByName(moduleName).subscribeActuator(actuator.getId(), edge.getTupleType());
 				}
 			}
 		}	
 	}
-	
+// mobility
+//	private static Map<Integer, Pair<Double, Integer>> mobilityMap;
+//	public void setMobilityMap(Map<Integer, Pair<Double, Integer>> mobilityMap) {
+//		Pair<Double, Integer> element = new Pair<Double, Integer>(1000.0, 9);
+//		mobilityMap.put(7,element);
+//		this.mobilityMap = mobilityMap;
+//	}
+	private void scheduleMobility(){
+//		double timeToChange = Paras.fogMobilityTimeInterval;
+		send(getId(), Paras.fogMobilityTimeInterval, FogEvents.CHANGE_MOBFOGS_LOCATION, null);
+		send(getId(), Paras.IoTMobilityTimeInterval, FogEvents.CHANGE_MOBIOTS_LOCATION, null);
+	}
+	private void manageFogMobility() {
+		ArrayList <String> removeFogNames = new ArrayList<String>();
+		for (Map.Entry<String, TableEntry> entry : ((FogDevice) CloudSim.getEntity("MainFog")).offloadTable.entrySet()){
+			if (entry.getValue().isMobility()){
+				entry.getValue().setLocationXY(changeTheLocation( ((FogDevice) CloudSim.getEntity(entry.getKey()))));
+				if( entry.getValue().updateStatus() == -1){
+					CloudSim.removeEntityByName(entry.getKey());
+					((FogDevice) CloudSim.getEntity("MainFog")).doOffloadingForRemTasks(entry.getKey());
+					removeFogNames.add(entry.getKey());
+					((FogDevice) CloudSim.getEntity("MainFog")).getListOfPeers().
+							remove((Integer)entry.getValue().getId());
+//					Example1.decMobs();
+//					if(Paras.debug)
+						System.out.println("time: "+CloudSim.clock()+" - device removed: " + entry.getKey());
+				}
+			}
+		}
+
+		((FogDevice) CloudSim.getEntity("MainFog")).offloadTable.keySet().removeAll(removeFogNames);
+
+
+		double timeToChange = Paras.fogMobilityTimeInterval;
+		send(getId(), timeToChange, FogEvents.CHANGE_MOBFOGS_LOCATION, null);
+	}
+	private void manageIoTMobility() {
+		ArrayList<FogDevice> toRemove = new ArrayList<>();
+		for (int i = 0; i<IoTMobs.size(); i++){
+				changeTheLocation(IoTMobs.get(i));
+				if( IoTMobs.get(i).updateIoTStatus() == -1){
+					((FogDevice) CloudSim.getEntity(IoTMobs.get(i).getParentId())).getChildrenIds().removeAll(Arrays.asList(IoTMobs.get(i).getId()));
+					CloudSim.removeEntityByName(IoTMobs.get(i).getName());
+//					Example1.decMobs();
+//					if(Paras.debug)
+					System.out.println("time: "+CloudSim.clock()+" - device removed: " + IoTMobs.get(i).getName());
+					toRemove.add(IoTMobs.get(i));
+				}
+		}
+
+
+		IoTMobs.removeAll(toRemove);
+		double timeToChange = Paras.fogMobilityTimeInterval;
+		send(getId(), timeToChange, FogEvents.CHANGE_MOBIOTS_LOCATION, null);
+	}
+
+
+	private Pair<Double, Double> changeTheLocation(FogDevice fog) {
+		Pair<Double, Double> curLoc, nextLoc, direction;
+		curLoc = fog.getLocationXY();
+		direction = Paras.directions.get(Paras.randomGenerator.nextInt(Paras.directions.size()));
+		nextLoc = new Pair<Double,Double>(curLoc.getFirst() + direction.getFirst(), curLoc.getSecond() + direction.getSecond());
+		fog.setLocationXY(nextLoc);
+		return nextLoc;
+
+	}
+
 	public void submitApplication(Application application, ModulePlacement modulePlacement){
 		submitApplication(application, 0, modulePlacement);
 	}
@@ -225,6 +658,7 @@ public class Controller extends SimEntity{
 		ModulePlacement modulePlacement = getAppModulePlacementPolicy().get(application.getAppId());
 		for(FogDevice fogDevice : fogDevices){
 			sendNow(fogDevice.getId(), FogEvents.ACTIVE_APP_UPDATE, application);
+
 		}
 		
 		Map<Integer, List<AppModule>> deviceToModuleMap = modulePlacement.getDeviceToModuleMap();
@@ -239,6 +673,7 @@ public class Controller extends SimEntity{
 	public List<FogDevice> getFogDevices() {
 		return fogDevices;
 	}
+
 
 	public void setFogDevices(List<FogDevice> fogDevices) {
 		this.fogDevices = fogDevices;

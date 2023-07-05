@@ -200,7 +200,7 @@ public class Host {
 	 * @post $none
 	 */
 	public boolean vmCreate(Vm vm) {
-		if (getStorage() < vm.getSize()) {
+		if (getStorage() < vm.getSize()) { // for this kind of allocation duplication would occur
 			Log.printLine("[VmScheduler.vmCreate] Allocation of VM #" + vm.getId() + " to Host #" + getId()
 					+ " failed by storage");
 			return false;
@@ -232,7 +232,39 @@ public class Host {
 		vm.setHost(this);
 		return true;
 	}
+	public boolean vmCanBeCreate(Vm vm) {
+		if (getStorage() < vm.getSize()) { // for this kind of allocation duplication would occur
+			Log.printLine("[VmScheduler.vmCreate] Allocation of VM #" + vm.getId() + " to Host #" + getId()
+					+ " failed by storage");
+			return false;
+		}
 
+		if (!getRamProvisioner().allocateRamForVm(vm, vm.getCurrentRequestedRam())) {
+			Log.printLine("[VmScheduler.vmCreate] Allocation of VM #" + vm.getId() + " to Host #" + getId()
+					+ " failed by RAM");
+			return false;
+		}
+
+		if (!getBwProvisioner().allocateBwForVm(vm, vm.getCurrentRequestedBw())) {
+			Log.printLine("[VmScheduler.vmCreate] Allocation of VM #" + vm.getId() + " to Host #" + getId()
+					+ " failed by BW");
+			getRamProvisioner().deallocateRamForVm(vm);
+			return false;
+		}
+
+		if (!getVmScheduler().allocatePesForVm(vm, vm.getCurrentRequestedMips())) {
+			Log.printLine("[VmScheduler.vmCreate] Allocation of VM #" + vm.getId() + " to Host #" + getId()
+					+ " failed by MIPS");
+			getRamProvisioner().deallocateRamForVm(vm);
+			getBwProvisioner().deallocateBwForVm(vm);
+			return false;
+		}
+
+		setStorage(getStorage() - vm.getSize());
+		getVmList().add(vm);
+		vm.setHost(this);
+		return true;
+	}
 	/**
 	 * Destroys a VM running in the host.
 	 * 

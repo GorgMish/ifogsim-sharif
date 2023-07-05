@@ -28,4 +28,9 @@ public class FogEvents {
 	public static final int RESOURCE_MGMT = BASE+24;
 	public static final int INITIALIZE_SENSOR = BASE+24;
 	public static final int EMIT_TUPLE = BASE+25;
+	public static final int CHANGE_MOBFOGS_LOCATION = BASE+26;
+	public static final int CHANGE_MOBIOTS_LOCATION = BASE+27;
+	public static final int ADD_NEW_MOBILE_FOG = BASE+28;
+	public static final int ADD_NEW_MOBILE_IOT = BASE+29;
+
 }

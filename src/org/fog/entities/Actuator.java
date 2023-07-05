@@ -57,7 +57,7 @@ public class Actuator extends SimEntity{
 		String srcModule = tuple.getSrcModuleName();
 		String destModule = tuple.getDestModuleName();
 		Application app = getApp();
-		
+		CloudSim.actu++;
 		for(AppLoop loop : app.getLoops()){
 			if(loop.hasEdge(srcModule, destModule) && loop.isEndModule(destModule)){
 				

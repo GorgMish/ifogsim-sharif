@@ -18,7 +18,6 @@ public class ModulePlacementMapping extends ModulePlacement{
 		for(String deviceName : mapping.keySet()){
 			FogDevice device = getDeviceByName(deviceName);
 			for(String moduleName : mapping.get(deviceName)){
-				
 				AppModule module = getApplication().getModuleByName(moduleName);
 				if(module == null)
 					continue;
@@ -35,7 +34,7 @@ public class ModulePlacementMapping extends ModulePlacement{
 		this.setModuleMapping(moduleMapping);
 		this.setModuleToDeviceMap(new HashMap<String, List<Integer>>());
 		this.setDeviceToModuleMap(new HashMap<Integer, List<AppModule>>());
-		this.setModuleInstanceCountMap(new HashMap<Integer, Map<String, Integer>>());
+		this.setModuleInstanceCountMap(new HashMap<Integer, Map<String, Integer>>()); // todo
 		for(FogDevice device : getFogDevices())
 			getModuleInstanceCountMap().put(device.getId(), new HashMap<String, Integer>());
 		mapModules();

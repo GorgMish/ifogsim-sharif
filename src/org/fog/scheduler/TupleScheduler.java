@@ -1,12 +1,13 @@
 package org.fog.scheduler;
 
+import org.cloudbus.cloudsim.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.CloudletSchedulerTimeShared;
 import org.cloudbus.cloudsim.ResCloudlet;
 
-public class TupleScheduler extends CloudletSchedulerTimeShared{
+public class TupleScheduler extends CloudletSchedulerSpaceShared{
 
 	public TupleScheduler(double mips, int numberOfPes) {
-		//super(mips, numberOfPes);
+//		super(mips, numberOfPes);
 		super();
 	}
 

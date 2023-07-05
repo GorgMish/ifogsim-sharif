@@ -1,9 +1,13 @@
 package org.fog.utils;
 
-public class Config {
+import org.fog.entities.Paras;
 
-	public static final double RESOURCE_MGMT_INTERVAL = 100;
-	public static int MAX_SIMULATION_TIME = 10000;
+public class Config {
+	public static final double MAX_NUMBER = 9999999.00;
+	public static final double CLUSTER_DISTANCE = 2.00;
+
+	public static final double RESOURCE_MGMT_INTERVAL = 5;
+	public static int MAX_SIMULATION_TIME = Paras.simTime;
 	public static int RESOURCE_MANAGE_INTERVAL = 100;
 	public static String FOG_DEVICE_ARCH = "x86";
 	public static String FOG_DEVICE_OS = "Linux";

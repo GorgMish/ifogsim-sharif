@@ -43,12 +43,12 @@ public abstract class ModulePlacement {
 	protected boolean createModuleInstanceOnDevice(AppModule _module, final FogDevice device){
 		AppModule module = null;
 		if(getModuleToDeviceMap().containsKey(_module.getName()))
-			module = new AppModule(_module);
+			module = new AppModule(_module); //todo there one
 		else
 			module = _module;
 			
 		if(canBeCreated(device, module)){
-			System.out.println("Creating "+module.getName()+" on device "+device.getName());
+//			System.out.println("Creating "+module.getName()+" on device "+device.getName());
 			
 			if(!getDeviceToModuleMap().containsKey(device.getId()))
 				getDeviceToModuleMap().put(device.getId(), new ArrayList<AppModule>());

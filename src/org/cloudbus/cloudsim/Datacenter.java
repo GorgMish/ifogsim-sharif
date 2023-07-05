@@ -17,6 +17,13 @@ import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
 import org.cloudbus.cloudsim.core.SimEntity;
 import org.cloudbus.cloudsim.core.SimEvent;
+import org.cloudbus.cloudsim.core.predicates.PredicateType;
+import org.fog.application.AppEdge;
+import org.fog.application.AppModule;
+import org.fog.application.Application;
+import org.fog.entities.FogDevice;
+import org.fog.entities.Paras;
+import org.fog.gui.core.Edge;
 
 
 /**
@@ -425,10 +432,14 @@ public class Datacenter extends SimEntity {
 	 * @post $none
 	 */
 	protected void processVmCreate(SimEvent ev, boolean ack) {
-		Vm vm = (Vm) ev.getData();
+//		Vm vm = (Vm) ev.getData();             // todo: there one , must build new one
+		AppModule vm = new AppModule((AppModule)ev.getData());
 
-		boolean result = getVmAllocationPolicy().allocateHostForVm(vm);
-
+		boolean result;
+		if (getHostList().get(0).getVmList().contains(vm)) //todo double vm
+			result = true;
+		else
+			result = getVmAllocationPolicy().allocateHostForVm(vm);
 		if (ack) {
 			int[] data = new int[3];
 			data[0] = getId();
@@ -713,7 +724,7 @@ public class Datacenter extends SimEntity {
 
 			int userId = cl.getUserId();
 			int vmId = cl.getVmId();
-						// time to transfer the files
+						// time to transfer the filesto
 			double fileTransferTime = predictFileTransferTime(cl.getRequiredFiles());
 			Host host = getVmAllocationPolicy().getHost(vmId, userId);
 			Vm vm = host.getVm(vmId, userId);
@@ -729,6 +740,7 @@ public class Datacenter extends SimEntity {
 				send(getId(), CloudSim.getMinTimeBetweenEvents()
 						+estimatedFinishTime, CloudSimTags.VM_DATACENTER_EVENT);
 				/*	edit done	*/
+
 			}
 
 			if (ack) {
@@ -1164,6 +1176,19 @@ public class Datacenter extends SimEntity {
 	 * @return the scheduling interval
 	 */
 	protected double getSchedulingInterval() {
+
+		if (Paras.schedulingDynamically){
+			double minTime = Double.MAX_VALUE;
+			Application app = ((FogDevice)this).getApplicationMap().values().iterator().next();
+			for (Vm vm:getVmList())
+				for (AppEdge edge:app.getEdges()) {
+					if (edge.getDestination().equals(((AppModule) vm).getName())) {
+						if(minTime > edge.getTupleCpuLength()/getHostList().get(0).getTotalMips())
+							minTime = edge.getTupleCpuLength()/getHostList().get(0).getTotalMips();
+					}
+				}
+			return minTime;
+		}
 		return schedulingInterval;
 	}
 

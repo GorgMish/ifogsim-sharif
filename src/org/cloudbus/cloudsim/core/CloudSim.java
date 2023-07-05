@@ -18,9 +18,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.cloudbus.cloudsim.Log;
+import org.fog.entities.analysisStruct;
 import org.cloudbus.cloudsim.core.predicates.Predicate;
 import org.cloudbus.cloudsim.core.predicates.PredicateAny;
 import org.cloudbus.cloudsim.core.predicates.PredicateNone;
+import org.fog.entities.Tuple;
 
 /**
  * This class extends the CloudSimCore to enable network simulation in CloudSim. Also, it disables
@@ -34,10 +36,12 @@ import org.cloudbus.cloudsim.core.predicates.PredicateNone;
  * @author Anton Beloglazov
  * @since CloudSim Toolkit 1.0
  */
+
 public class CloudSim {
 
 	/** The Constant CLOUDSIM_VERSION_STRING. */
 	private static final String CLOUDSIM_VERSION_STRING = "3.0";
+	public static boolean runFinished;
 
 	/** The id of CIS entity. */
 	private static int cisId = -1;
@@ -63,8 +67,11 @@ public class CloudSim {
 	private static double terminateAt = -1;
 
 	/** The minimal time between events. Events within shorter periods after the last event are discarded. */
-	private static double minTimeBetweenEvents = 0.1;
-	
+	private static double minTimeBetweenEvents = 0.0;
+
+	public static ArrayList<analysisStruct> listOfAnalysis = new ArrayList<analysisStruct>();
+	public static int actu;
+
 	/**
 	 * Initialises all the common attributes.
 	 * 
@@ -311,7 +318,7 @@ public class CloudSim {
 	private static List<SimEntity> entities;
 
 	/** The future event queue. */
-	protected static FutureQueue future;
+	private static FutureQueue future;
 
 	/** The deferred event queue. */
 	protected static DeferredQueue deferred;
@@ -351,6 +358,7 @@ public class CloudSim {
 		waitPredicates = new HashMap<Integer, Predicate>();
 		clock = 0;
 		running = false;
+		actu = 0;
 	}
 
 	// The two standard predicates
@@ -484,6 +492,10 @@ public class CloudSim {
 			entitiesByName.put(e.getName(), e);
 		}
 	}
+	public static void removeEntityByName(String name) {
+		entities.set(entitiesByName.get(name).getId(), null);
+		entitiesByName.remove(name);
+	}
 
 	/**
 	 * Internal method used to add a new entity to the simulation when the simulation is running. It
@@ -512,15 +524,16 @@ public class CloudSim {
 		
 		int entities_size = entities.size();
 
-		for (int i = 0; i < entities_size; i++) {
+		for (int i = 0; i < entities_size; i++) { //todo
+
 			ent = entities.get(i);
-			if (ent.getState() == SimEntity.RUNNABLE) {
+			if (ent != null && ent.getState() == SimEntity.RUNNABLE) {
 				ent.run();
 			}
 		}
 				
 		// If there are more future events then deal with them
-		if (future.size() > 0) {
+		if (future.size() > 0 && !runFinished) {
 			List<SimEvent> toRemove = new ArrayList<SimEvent>();
 			Iterator<SimEvent> fit = future.iterator();
 			queue_empty = false;
@@ -535,15 +548,17 @@ public class CloudSim {
 			while (trymore) {
 				SimEvent next = fit.next();
 				if (next.eventTime() == first.eventTime()) {
-					processEvent(next);
-					toRemove.add(next);
+					processEvent(next);  // todo there two
+//					toRemove.add(next);
+					future.remove(next);
+					fit = future.iterator();
 					trymore = fit.hasNext();
 				} else {
 					trymore = false;
 				}
 			}
 
-			future.removeAll(toRemove);
+//			future.removeAll(toRemove);
 
 		} else {
 			queue_empty = true;
@@ -598,9 +613,16 @@ public class CloudSim {
 		if (delay < 0) {
 			throw new IllegalArgumentException("Send delay can't be negative.");
 		}
-
+		String tupleType = null;
+		if (data instanceof Tuple)
+			tupleType = ((Tuple) data).getTupleType();
+//		listOfAnalysis.add(new analysisStruct(analysisStruct.AE, clock, clock + delay,  src,  dest,  delay,  tag, tupleType));
 		SimEvent e = new SimEvent(SimEvent.SEND, clock + delay, src, dest, tag, data);
 		future.addEvent(e);
+	}
+
+	private static void addToAnalysis(int src, int dest, double delay, int tag, double clock) {
+
 	}
 
 	/**
@@ -774,7 +796,7 @@ public class CloudSim {
 				} else {
 					int tag = e.getTag();
 					dest_ent = entities.get(dest);
-					if (dest_ent.getState() == SimEntity.WAITING) {
+					if (dest_ent != null && dest_ent.getState() == SimEntity.WAITING) {
 						Integer destObj = Integer.valueOf(dest);
 						Predicate p = waitPredicates.get(destObj);
 						if ((p == null) || (tag == 9999) || (p.match(e))) {
@@ -922,14 +944,15 @@ public class CloudSim {
 		// Allow all entities to exit their body method
 		if (!abruptTerminate) {
 			for (SimEntity ent : entities) {
-				if (ent.getState() != SimEntity.FINISHED) {
+				if (ent != null && ent.getState() != SimEntity.FINISHED) {
 					ent.run();
 				}
 			}
 		}
 
 		for (SimEntity ent : entities) {
-			ent.shutdownEntity();
+			if (ent != null)
+				ent.shutdownEntity();
 		}
 
 		// reset all static variables
