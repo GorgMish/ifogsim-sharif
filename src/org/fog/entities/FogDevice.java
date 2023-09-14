@@ -67,7 +67,15 @@ public class FogDevice extends PowerDatacenter {
 	protected double xCoordinate;
 	protected double yCoordinate;
 
+	private Patient patient;
 
+	public Patient getPatient() {
+		return patient;
+	}
+
+	public void setPatient(Patient patient) {
+		this.patient = patient;
+	}
 
 	protected int parentId;
 	

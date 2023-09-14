@@ -32,5 +32,6 @@ public class FogEvents {
 	public static final int CHANGE_MOBIOTS_LOCATION = BASE+27;
 	public static final int ADD_NEW_MOBILE_FOG = BASE+28;
 	public static final int ADD_NEW_MOBILE_IOT = BASE+29;
+	public static final int CALC_NUMBER_OF_TASKS = BASE+30;
 
 }

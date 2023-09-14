@@ -12,6 +12,7 @@ import java.util.Map;
 public class TableEntry{
     private int id;
     private Pair<Double, Double> locationXY;
+    public Double depTime = 0.0;
     private long mips;
     private boolean mobility;
     private boolean redzoneStatus;
@@ -228,6 +229,8 @@ public class TableEntry{
 
     public int updateStatus() {
         Pair<Double, Double> fogLoc, mainFogLoc;
+        if(this.depTime <= CloudSim.clock())
+            return -1;
         if (Math.abs(this.getLocationXY().getFirst() - 7.5) > 7.5 || Math.abs(this.getLocationXY().getSecond() - 7.5) > 7.5){
             this.redzoneStatus = true;
             if(Paras.locDebug) {

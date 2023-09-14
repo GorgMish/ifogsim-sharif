@@ -94,7 +94,7 @@ public abstract class SimEntity implements Cloneable {
 	 * Get the name of this entity.
 	 * 
 	 * @return The entity's name
-	 */
+//	 */
 	public String getName() {
 		return name;
 	}
@@ -725,6 +725,7 @@ public abstract class SimEntity implements Cloneable {
 		if (Math.abs(this.getLocationXY().getFirst() - 7.5) > 7.5 || Math.abs(this.getLocationXY().getSecond() - 7.5) > 7.5){
 			if(Paras.IoTlocDebug) {
 				try {
+
 					BufferedWriter bf = new BufferedWriter(new FileWriter(CloudSim.getEntity(this.id).relatedFile, true));
 					bf.write(this.getLocationXY().getFirst()+" "+this.getLocationXY().getSecond()+"\n");
 					bf.close();
@@ -741,6 +742,7 @@ public abstract class SimEntity implements Cloneable {
 			if(Paras.IoTlocDebug) {
 				try {
 					BufferedWriter bf = new BufferedWriter(new FileWriter(CloudSim.getEntity(this.id).relatedFile, true));
+					bf.write(CloudSim.clock()+": ");
 					bf.write(this.getLocationXY().getFirst()+" "+this.getLocationXY().getSecond()+"\n");
 					bf.close();
 				} catch (IOException e) {

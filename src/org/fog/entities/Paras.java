@@ -7,6 +7,9 @@ import java.util.Random;
 
 
 public class Paras {
+//    public static int simTime = 600;
+//    public static int simTime = 1800;
+    public static int simTime = 3600;
     public final static int BESTEFFORT = 1;
 
     public final static int CLOUDFOG = 0;
@@ -29,7 +32,7 @@ public class Paras {
 
     // Debug and Print
     public static boolean locDebug = true;
-    public static boolean IoTlocDebug = false;
+    public static boolean IoTlocDebug = true;
     public static boolean debug = false;
     public static String pathOfRun;
     public static int runNum = 0;
@@ -37,47 +40,85 @@ public class Paras {
 
     // general
     public static int numOfAreas = 1;
-    public static int numOfRooms = 4;
-    public static int numOfLightSensorPerRoom = 4;
-    public static int numOfHeavySensorPerRoom = 1;
-    public static int numOfMobSensorPerArea = 2;
+    public static int numOfRooms = 1; //4
+    public static int numOfPatients = 4; //4
+    public static int numOfLightSensorPerPatient = 4;  //4
+    public static int numOfHeavySensorPerPatient = 1;
+//    public static int numOfLightSensorPerPatient = 8;  //4
+//    public static int numOfHeavySensorPerPatient = 2;
+//    public static int numOfLightSensorPerPatient = 12;  //4
+//    public static int numOfHeavySensorPerPatient = 3;
+    public static int numOfMobSensorPerArea = 1;
     public static double speed = 3 * 100000000;
     public static double زcoefPower = 0;
     public static long seed = 1;
 
     public static int nInLog = 4;
     public static double probOfNewMobileFog = 0.5;
-    public static double fogMobilityTimeInterval = 25;
     public static double newFogInterInterval = 2000.012;
     public static ArrayList<Pair<Double,Double>> directions = new ArrayList<Pair<Double,Double>>() {{ add(new Pair<Double,Double>(0.0, 0.0));add(new Pair <Double,Double> (1.0, 0.0));add(new Pair <Double,Double> (-1.0, 0.0));add(new Pair <Double,Double> (0.0, 1.0));add(new Pair<Double,Double>(0.0, -1.0));add(new Pair<Double,Double>(1.0, 1.0));add(new Pair<Double,Double>(-1.0, 1.0));add(new Pair<Double,Double>(1.0, -1.0));add(new Pair<Double,Double>(-1.0, -1.0)); }};
-    public static ArrayList<Pair <Double,Double> > roomLocs = new ArrayList<Pair <Double,Double> > (){{add(new Pair <Double,Double> (0.0, 0.0));add(new Pair <Double,Double> (0.0, 15.0));add(new Pair <Double,Double> (15.0, 0.0));add(new Pair <Double,Double> (15.0, 15.0));}};
+    public static ArrayList<Pair <Double,Double> > roomLocs = new ArrayList<Pair <Double,Double> > (){{add(new Pair <Double,Double> (0.0, 0.0));add(new Pair <Double,Double> (0.0, 15.0));add(new Pair <Double,Double> (15.0, 0.0));add(new Pair <Double,Double> (15.0, 15.0));add(new Pair <Double,Double> (7.5, 7.5));}};
+//    public static ArrayList<Double> patientScheduleTime = new ArrayList<Double>() {{add(2500.0);add(3000.0);add(3500.0);}};
+    public static ArrayList<Pair<Double, Double>> patientScheduleTime = new ArrayList<Pair<Double, Double>>() {{
+        add(new Pair<Double, Double>(0.2, 0.1));
+        add(new Pair<Double, Double>(0.25, 0.05));
+        add(new Pair<Double, Double>(0.25, 0.15));
+    }};
+
+    public static ArrayList<Pair<Double, Double>> fogScheduleTime = new ArrayList<Pair<Double, Double>>() {{
+        add(new Pair<Double, Double>(0.4, 0.15));
+        add(new Pair<Double, Double>(0.5, 0.20));
+    }};
+
     public static ArrayList<Integer> IoTinRooms = new ArrayList<Integer>();
+    public static ArrayList<Integer> patientInArea = new ArrayList<Integer>();
     // mobile IoT
     public static boolean IoTMob = false;
-    public static double IoTMobilityTimeInterval = 25;
-    public static double newIoTInterInterval = 2000.015;
+    public static boolean all_IoT_mob = false;
+
+    // Mobility Intervals
+    public static double fogMobilityTimeInterval = 1;
+    public static double patientMobilityTimeInterval = 1;
+//    public static double newPatientInterInterval = 500.015;
 
     // computation
-    public static long lightMIPS = 1;
-    public static long heavyMIPS = 200;
-    public static long fog1MIPS = 5000;
-    public static long fog2MIPS = 8000;
-    public static long cloudMIPS = 50000;
+    public static double calcNumTasksInterval = 1.00;
+    public static final String ENERGY_CONSUMPTION_TXT = "energyConsumption.txt";
+    public static final String TASK_NUMBER_TXT = "tasksNumber.txt";
+
+    public static long lightMIPS = 100;
+    public static long heavyMIPS = 800;
+//    public static long lightMIPS = 1;
+//    public static long heavyMIPS = 200;
+
+    public static long fog1MIPS = 2800;
+    public static long fog2MIPS = 4480;
+//    public static long fog1MIPS = 5000;
+//    public static long fog2MIPS = 8000;
+//    public static long fog1MIPS = 3000;
+//    public static long fog2MIPS = 5000;
+//    public static long fog1MIPS = 10000;
+//    public static long fog2MIPS = 15000;
+//    public static long cloudMIPS = 50000;
+    public static long cloudMIPS = 44800;
 
     // power
-    public static double baseMIPS = 3000.0;
+    public static double baseMIPS = fog1MIPS;
 
-    public static double powerCloudActive = ((double)cloudMIPS/baseMIPS) * 103.339;
-//    public static double powerCloudIdle = (cloudMIPS/3000.0) * 83.25;
-    public static double powerCloudIdle = 0.0;
 
-    public static double powerL2Active = ((double)fog2MIPS/baseMIPS) * 103.339;
-//    public static double powerL2Idle = (fog2MIPS/3000.0) * 83.25;
-    public static double powerL2Idle = 0.0;
+    public static double powerCloudActive = (cloudMIPS/fog1MIPS) * 83.433;
+    public static double powerCloudIdle = (cloudMIPS/fog1MIPS) * 83.433;
+//    public static double powerCloudActive = ((double)cloudMIPS/baseMIPS) * 103.339;
+//    public static double powerCloudIdle = 0.0;
+    public static double powerL2Active = (fog2MIPS/fog1MIPS) * 107.339;
+    public static double powerL2Idle = (fog2MIPS/fog1MIPS) * 83.433;
+//    public static double powerL2Active = ((double)fog2MIPS/baseMIPS) * 103.339;
+//    public static double powerL2Idle = 0.0;
 
-    public static double powerL1Active = ((double)fog1MIPS/baseMIPS) * 103.339;
+    public static double powerL1Active = (fog1MIPS/fog1MIPS) * 107.339;
+    public static double powerL1Idle = (fog1MIPS/fog1MIPS) * 83.433;
 //    public static double powerL1Idle = (fog1MIPS/3000.0) * 83.25;
-    public static double powerL1Idle = 0.0;
+//    public static double powerL1Idle = 0.0;
 
     public static double initialPowHour = 18;
     public static double batteryThreshold = 5;
@@ -93,7 +134,8 @@ public class Paras {
     public static double lightReqPow = 100;
     public static double heavyReqPow = 400;
 
-    public static double emitInterval = 2;
+    public static double lightEmitInterval = 2;
+    public static double heavyEmitInterval  = 10;
 
     // request to main fog
     public static double lightReqToSec = 4;
@@ -127,7 +169,7 @@ public class Paras {
     public final static long KB = 1000;
     public final static long HtoS = 3600;
 
-    public static int simTime = 3500;
+
 }
 
 

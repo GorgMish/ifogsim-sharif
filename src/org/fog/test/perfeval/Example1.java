@@ -1,7 +1,6 @@
 package org.fog.test.perfeval;
 
 import java.io.*;
-import java.lang.reflect.Parameter;
 import java.util.*;
 
 import org.apache.commons.math3.util.Pair;
@@ -31,10 +30,6 @@ import org.fog.utils.NetworkUsageMonitor;
 import org.fog.utils.TimeKeeper;
 import org.fog.utils.distribution.DeterministicDistribution;
 
-import javax.print.attribute.standard.PageRanges;
-
-import static jdk.xml.internal.JdkXmlUtils.getValue;
-
 /**
  * Simulation setup for case study 2 - Intelligent Surveillance
  * @author Harshit Gupta
@@ -43,6 +38,7 @@ import static jdk.xml.internal.JdkXmlUtils.getValue;
 public class Example1 {
 
     static List<FogDevice> fogDevices;
+    static List<Patient> Patients;
     static List<FogDevice> fogLayer2s;
     static List<FogDevice> fogLayer1s;
     static List<FogDevice> IoTMobs;
@@ -50,7 +46,6 @@ public class Example1 {
     static Hashtable<Integer, List<FogDevice>> peerGateWays;
     static List<Sensor> sensors;
     static List<Actuator> actuators;
-
 
 
     private static HashMap<String, Integer> getIdByName = new HashMap<String, Integer>();
@@ -86,7 +81,9 @@ public class Example1 {
             File f = new File(Paras.pathOfRun);
             f.mkdir();
             String fileName = "res_run";
-            PrintStream out = new PrintStream(new FileOutputStream("D:\\Learn\\Academic\\LabWorks\\FogComputing\\Simulation\\iFogSim\\Res_Ex\\Config "+fileCount+"\\"+fileName+".txt", true));
+//            PrintStream out = new PrintStream(new FileOutputStream("D:\\Learn\\Academic\\LabWorks\\FogComputing\\Simulation\\iFogSim\\Res_Ex\\Config "+fileCount+"\\"+fileName+".txt", true));
+            PrintStream out = new PrintStream(new FileOutputStream("C:\\Drivers\\Learning\\Research\\FogComputing\\Simulation\\iFogSim\\Res_Ex\\Config "+fileCount+"\\"+fileName+".txt", true));
+
             System.setOut(out);
         }catch(Exception e){System.out.println(e);}
 
@@ -115,7 +112,8 @@ public class Example1 {
 
                 Controller controller = null; //todo
                 Paras.resType = i;
-//                Paras.resType = 0;
+//                Paras.resType = Paras.ClOUDONLY;
+
                 switch (Paras.resType){
                     case Paras.CLOUDFOG:
                         Paras.CLOUD = false;
@@ -206,9 +204,10 @@ public class Example1 {
 
         System.out.println("\n **** config of this result ***** \n");
         System.out.println(" ## 1 topology details ##");
-        System.out.println("# of rooms : "+ Paras.numOfRooms);
-        System.out.println("# of light sensors: "+ Paras.numOfLightSensorPerRoom);
-        System.out.println("# of heavy sensors: "+ Paras.numOfHeavySensorPerRoom);
+        System.out.println("# of area : "+ Paras.numOfAreas);
+        System.out.println("# of patients per area : "+ Paras.numOfPatients);
+        System.out.println("# of light sensors: "+ Paras.numOfLightSensorPerPatient);
+        System.out.println("# of heavy sensors: "+ Paras.numOfHeavySensorPerPatient);
 
         System.out.println(" ## 2 MIPS of devices ##");
         System.out.println("Cloud : "+ Paras.cloudMIPS);
@@ -223,8 +222,9 @@ public class Example1 {
         System.out.println("deadline : "+ Paras.deadline);
         System.out.println("battery threshold : "+ Paras.batteryThreshold);
         System.out.println("RSSI threshold : "+ Paras.RSSIthreshold);
-        System.out.println("emit interval : "+ Paras.emitInterval);
-
+        System.out.println("light emit interval : "+ Paras.lightEmitInterval);
+        System.out.println("heavy emit interval : "+ Paras.heavyEmitInterval);
+        System.out.println("eng calc interval : "+ Paras.calcNumTasksInterval);
         System.out.println(" ###########################\n");
     }
 
@@ -254,7 +254,6 @@ public class Example1 {
         cloud.setLocationXY(new Pair<Double, Double>(0.0, 30002007.0));
         fogDevices.add(cloud);
 
-
         FogDevice fogLayer2 = createFogDevice("FogLayer2", Paras.fog2MIPS, 4000, Paras.bwBetLayerGB * 1000000000, Paras.bwBetLayerGB * 1000000000, 1, 0.0, Paras.powerL2Active, Paras.powerL2Idle);
         fogLayer2.setParentId(cloud.getId());
         fogLayer2.setUplinkLatency(0); // latency of connection between proxy server and cloud is 100 ms
@@ -268,19 +267,20 @@ public class Example1 {
 //        fogDevices.add(Router2);
 //        routers.add(Router2);
 
-        for (int i = 0; i < fogLayer2s.size(); i++){
-            addArea(i + "", userId, appId, fogLayer2s.get(i).getId());
+        for (int i = 0; i < Paras.numOfAreas; i++){
+            addArea(i, userId, appId, fogLayer2.getId());
         }
     }
 
-
-    private static void addArea(String id, int userId, String appId, int parentId) {
-        FogDevice mainFog = createFogDevice("MainFog", Paras.fog1MIPS, 4000, Paras.bwBetLayerGB * 1000000000, Paras.bwToActKB * Paras.KB, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
+    private static void addArea(int areaNum, int userId, String appId, int parentId) {
+        Paras.patientInArea.add(0);
+        FogDevice mainFog = createFogDevice("MainFog" + "-A" +areaNum, Paras.fog1MIPS, 4000, Paras.bwBetLayerGB * 1000000000, Paras.bwToActKB * Paras.KB, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
         fogDevices.add(mainFog);
         mainFog.setParentId(parentId);
         mainFog.setUplinkLatency(0);
 //        mainFog.setPeerHeadId(mainFog.getId());
-        mainFog.setLocationXY(new Pair<Double, Double>(7.5, 7.5));
+        mainFog.setLocationXY(new Pair<Double, Double>(7.0, 5.0));
+//        mainFog.setLocationXY(new Pair<Double, Double>(7.5, 7.5));
         fogLayer1s.add(mainFog);
 
         mainFog.offloadTable = new HashMap<String, TableEntry>();
@@ -289,7 +289,7 @@ public class Example1 {
         mainFog.offloadTable.put(mainFog.getName(), entry);
 //        peerGateWays.put(parentId, )
 
-        FogDevice staticFog = createFogDevice("StaticFog", Paras.fog1MIPS, 4000, Paras.bwBetFogMB * Paras.MB, Paras.bwBetFogMB * 100000, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
+        FogDevice staticFog = createFogDevice("StaticFog1" + "-A" +areaNum, Paras.fog1MIPS, 4000, Paras.bwBetFogMB * Paras.MB, Paras.bwBetFogMB * 100000, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
         fogDevices.add(staticFog);
 //        staticFog.setParentId(mainFog.getId());
         staticFog.setUplinkLatency(0);
@@ -302,7 +302,37 @@ public class Example1 {
         mainFog.offloadTable.put(staticFog.getName(), entry);
         mainFog.getInterfaces().put(staticFog.getId(), new Interface(Paras.bwBetFogMB * Paras.MB));
 
-        FogDevice mobileFog = createFogDevice("MobileFog-"+numMob, Paras.fog1MIPS, 4000, Paras.bwBetFogMB * Paras.MB, Paras.bwBetFogMB * Paras.MB, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
+        FogDevice staticFog2 = createFogDevice("StaticFog2" + "-A" +areaNum, Paras.fog1MIPS, 4000, Paras.bwBetFogMB * Paras.MB, Paras.bwBetFogMB * 100000, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
+        fogDevices.add(staticFog2);
+//        staticFog.setParentId(mainFog.getId());
+        staticFog2.setUplinkLatency(0);
+        staticFog2.setPeerHeadId(mainFog.getId());
+        mainFog.getListOfPeers().add(staticFog2.getId());
+        staticFog2.setLocationXY(new Pair<Double, Double>(2.5, 7.5));
+        fogLayer1s.add(staticFog2);
+
+        entry = new TableEntry(staticFog2.getId(), staticFog2.getLocationXY(), Paras.fog1MIPS, false,Paras.bwBetFogMB * Paras.MB, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
+        mainFog.offloadTable.put(staticFog2.getName(), entry);
+        mainFog.getInterfaces().put(staticFog2.getId(), new Interface(Paras.bwBetFogMB * Paras.MB));
+
+
+//        addMobFog(areaNum, userId, appId, mainFog);
+
+        entry = new TableEntry(mainFog.getParentId(), new Pair<Double, Double>(7.5, 2007.5), Paras.fog2MIPS, false,Paras.bwBetLayerGB * Paras.GB, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
+        mainFog.offloadTable.put("FogLayer2", entry);
+
+        entry = new TableEntry(CloudSim.getEntityId("Cloud"), CloudSim.getEntity("Cloud").getLocationXY(), Paras.cloudMIPS, false, Paras.bwBetLayerGB * Paras.GB,0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
+        mainFog.offloadTable.put("Cloud", entry);
+
+//        makePeerSensor(listForPeer);
+//        addActuator(id, userId, appId, gateWay1.getId());
+
+        return ;
+    }
+
+    private static void addMobFog(int areaNum, int userId, String appId, FogDevice mainFog) {
+        TableEntry entry;
+        FogDevice mobileFog = createFogDevice("MobileFog-"+ numMob + "-A" + areaNum, Paras.fog1MIPS, 4000, Paras.bwBetFogMB * Paras.MB, Paras.bwBetFogMB * Paras.MB, 1, 0.0, Paras.powerL1Active, Paras.powerL1Idle);
         fogDevices.add(mobileFog);
         mobileFog.setMobile();
 //        mobileFog.setParentId(mainFog.getId());
@@ -311,7 +341,7 @@ public class Example1 {
         mainFog.getListOfPeers().add(mobileFog.getId());
         mobileFog.setLocationXY(new Pair<Double, Double>(12.0, 7.5));
         fogLayer1s.add(mobileFog);
-        mobileFog.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"__mob"+Example1.numMob+".txt");
+        mobileFog.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"__mob"+Example1.numMob+ "-A" + areaNum +".txt");
         try {
             mobileFog.bufferWriter = new BufferedWriter(new FileWriter(mobileFog.relatedFile, true));
         } catch (IOException e) {
@@ -324,61 +354,60 @@ public class Example1 {
         mainFog.getInterfaces().put(mobileFog.getId(), new Interface(Paras.bwBetFogMB * Paras.MB));
 
         ArrayList<FogDevice> listForPeer = new ArrayList<>();
+        Paras.patientInArea = new ArrayList<Integer>();
 
-        for (int k = 0; k < Paras.numOfRooms; k++){
-            for (int i = 0, j = 0; i < Paras.numOfLightSensorPerRoom; i++, j++) {
-                String mobileId = "LightSensor-" + k + "-" + i;
-                FogDevice Sensor = addSensor(mobileId,"lightRAW", userId, appId, mainFog.getId(), Paras.lightMIPS, 1000, Paras.bwFromLightKB * Paras.KB, Paras.bwFromLightKB * Paras.KB); // adding a smart camera to the physical topology. Smart cameras have been modeled as fog devices as well.
-                if(Paras.IoTinRooms.size()<=k)
-                    Paras.IoTinRooms.add(k,0);
-                Sensor.setUplinkLatency(0); // latency of connection between camera and router is 2 ms
-                Sensor.setLocationXY(Paras.roomLocs.get(k));
-                fogDevices.add(Sensor);
-                IoTMobs.add(Sensor);
-                if(Paras.IoTlocDebug) {
-                    Sensor.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"__mob_IOT_"+ k + "-" + Paras.IoTinRooms.get(k)+".txt");
-
-                    try {
-                        Sensor.bufferWriter = new BufferedWriter(new FileWriter(Sensor.relatedFile, true));
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+        Paras.patientInArea.set(areaNum, 0);
+        for (int k = 0; k < Paras.numOfPatients; k++){
+            Patient patient = new Patient(areaNum);
+            patient.name = "patient-A" + areaNum + "-" + Paras.patientInArea.get(areaNum);
+            patient.setLocationXY(Paras.roomLocs.get(k));
+            Paras.patientInArea.set(areaNum, Paras.patientInArea.get(areaNum)+1);
+            if(Paras.IoTlocDebug) {
+                patient.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"-"+k+"_patient-A"+ areaNum + "-" + ".txt");
+//                        Sensor.relatedFile = new File(Paras.pathOfRun+"\\run"+Paras.runNum+"__mob_IOT_"+ k + "-" + Paras.IoTinRooms.get(k)+ "-A" +areaNum+".txt");
+                try {
+                    patient.bufferWriter = new BufferedWriter(new FileWriter(patient.relatedFile, true));
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                Paras.IoTinRooms.set(k,Paras.IoTinRooms.get(k)+1);
-//            if (j < 2){
-//                listForPeer.add(Sensor);
-//            }
             }
-            for (int i = 0, j = 0; i < Paras.numOfHeavySensorPerRoom; i++, j++) {
-                String mobileId = "HeavySensor-" + k + "-" + i;
-                FogDevice Sensor = addSensor(mobileId,"heavyRAW", userId, appId, mainFog.getId(), Paras.heavyMIPS, 1000, Paras.bwFromHeavyMB * Paras.MB, Paras.bwFromHeavyMB * Paras.MB); // adding a smart camera to the physical topology. Smart cameras have been modeled as fog devices as well.
+            for (int i = 0; i < Paras.numOfLightSensorPerPatient; i++) {
+                String mobileId = "LightSensor-P" + k + "-" + i + "-A" + areaNum;
+                FogDevice Sensor = addSensor(mobileId,"lightRAW", userId, appId, mainFog.getId(), Paras.lightMIPS, 1000, Paras.bwFromLightKB * Paras.KB, Paras.bwFromLightKB * Paras.KB, Paras.lightEmitInterval); // adding a smart camera to the physical topology. Smart cameras have been modeled as fog devices as well.
+//                if(Paras.IoTinRooms.size()<=k)
+//                    Paras.IoTinRooms.add(k,0);
                 Sensor.setUplinkLatency(0); // latency of connection between camera and router is 2 ms
-                Sensor.setLocationXY(Paras.roomLocs.get(k));
-                fogDevices.add(Sensor);
 
+                fogDevices.add(Sensor);
+                patient.addFogDevice(Sensor);
+                Sensor.setPatient(patient);
+                if(Paras.all_IoT_mob){
+                    IoTMobs.add(Sensor);
+                }
+
+//                Paras.IoTinRooms.set(k,Paras.IoTinRooms.get(k)+1);
 //            if (j < 2){
 //                listForPeer.add(Sensor);
 //            }
             }
-            String mobileId = "Actuator-" + k;
+            for (int i = 0; i < Paras.numOfHeavySensorPerPatient; i++) {
+                String mobileId = "HeavySensor-" + k + "-" + i+ "-A" + areaNum;
+                FogDevice Sensor = addSensor(mobileId,"heavyRAW", userId, appId, mainFog.getId(), Paras.heavyMIPS, 1000, Paras.bwFromHeavyMB * Paras.MB, Paras.bwFromHeavyMB * Paras.MB, Paras.heavyEmitInterval); // adding a smart camera to the physical topology. Smart cameras have been modeled as fog devices as well.
+                Sensor.setUplinkLatency(0); // latency of connection between camera and router is 2 ms
+                fogDevices.add(Sensor);
+                patient.addFogDevice(Sensor);
+                Sensor.setPatient(patient);
+//            if (j < 2){
+//                listForPeer.add(Sensor);
+//            }
+            }
+            String mobileId = "Actuator-" + k+ "-A" + areaNum;
             FogDevice Actuator = addActuator(mobileId, "ACTUATOR", userId, appId, mainFog.getId(), 10, 100, 10, Paras.bwFromHeavyMB * Paras.MB); // adding a smart camera to the physical topology. Smart cameras have been modeled as fog devices as well.
             Actuator.setUplinkLatency(0); // latency of connection between camera and router is 2 ms
-            Actuator.setLocationXY(Paras.roomLocs.get(k));
             fogDevices.add(Actuator);
+            patient.addFogDevice(Actuator);
+            Actuator.setPatient(patient);
         }
-
-
-
-        entry = new TableEntry(mainFog.getParentId(), new Pair<Double, Double>(7.5, 2007.5), Paras.fog2MIPS, false,Paras.bwBetLayerGB * Paras.GB, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
-        mainFog.offloadTable.put("FogLayer2", entry);
-
-        entry = new TableEntry(CloudSim.getEntityId("Cloud"), CloudSim.getEntity("Cloud").getLocationXY(), Paras.cloudMIPS, false, Paras.bwBetLayerGB * Paras.GB,0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0);
-        mainFog.offloadTable.put("Cloud", entry);
-
-//        makePeerSensor(listForPeer);
-//        addActuator(id, userId, appId, gateWay1.getId());
-
-        return ;
     }
 
 //    private static void makePeerSensor(ArrayList<FogDevice> listForPeer) {
@@ -394,10 +423,10 @@ public class Example1 {
 //            listForPeer.get(i).listOfPeers = temp;
 //    }
 
-    private static FogDevice addSensor(String id, String tupleType, int userId, String appId, int parentId, long mips, int ram, long dwBw, long upBw) {
+    private static FogDevice addSensor(String id, String tupleType, int userId, String appId, int parentId, long mips, int ram, long dwBw, long upBw, double emitInterval) {
         FogDevice Embedded = createFogDevice("embSen-" + id, mips, ram, dwBw, upBw, 3, 0, 5, 4);
         Embedded.setParentId(parentId);
-        Sensor sensor = new Sensor("sen-" + id, tupleType, userId, appId, new DeterministicDistribution(Paras.emitInterval)); // inter-transmission time of camera (sensor) follows a deterministic distribution
+        Sensor sensor = new Sensor("sen-" + id, tupleType, userId, appId, new DeterministicDistribution(emitInterval)); // inter-transmission time of camera (sensor) follows a deterministic distribution
         sensors.add(sensor);
         sensor.setGatewayDeviceId(Embedded.getId());
         sensor.setLatency(0.0);  // latency of connection between camera (sensor) and the parent Smart Camera is 1 ms
